@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小李的基金持仓</title>
+    
+    <!-- 引入Supabase客户端库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 原有样式文件 -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- 修复样式 -->
+    <style>
+        /* 连接状态指示器 */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .connection-online {
+            background: #34C759;
+            color: white;
+        }
+        
+        .connection-offline {
+            background: #FF9500;
+            color: white;
+        }
+        
+        .connection-error {
+            background: #FF3B30;
+            color: white;
+        }
+        
+        .connection-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        /* 云端徽章 */
+        .cloud-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #007AFF;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        /* 数据控制按钮 */
+        .data-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .data-source-btn, .import-btn, .sync-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .data-source-btn {
+            background: #007AFF;
+            color: white;
+        }
+        
+        .data-source-btn:hover {
+            background: #0056CC;
+        }
+        
+        .import-btn {
+            background: #34C759;
+            color: white;
+        }
+        
+        .import-btn:hover {
+            background: #2AA44F;
+        }
+        
+        .sync-btn {
+            background: #5856D6;
+            color: white;
+        }
+        
+        .sync-btn:hover {
+            background: #4645B3;
+        }
+        
+        /* 修复的模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            z-index: 10001;
+            margin: 20px;
+        }
+        
+        /* 确保模态框可以关闭 */
+        .modal .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            z-index: 10002;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal .close-btn:hover {
+            background: #f5f5f5;
+            border-radius: 50%;
+        }
+        
+        /* 确保页面内容在模态框后面 */
+        body.modal-open {
+            overflow: hidden;
+        }
+        
+        /* 修复浮动按钮的z-index */
+        #cloudHelpBtn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            z-index: 5000; /* 确保在模态框下面 */
+        }
+        
+        /* 数据源选项 */
+        .data-option {
+            padding: 15px;
+            border: 2px solid #e5e5e7;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            background: white;
+        }
+        
+        .data-option:hover {
+            border-color: #007AFF;
+            background: #f0f7ff;
+        }
+        
+        .data-option.selected {
+            border-color: #007AFF;
+            background: #f0f7ff;
+        }
+        
+        .option-icon {
+            font-size: 32px;
+            color: #007AFF;
+            margin-bottom: 10px;
+        }
+        
+        /* 模态框内部元素样式 */
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e7;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .section-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .data-controls {
+                flex-wrap: wrap;
+            }
+            
+            .modal-content {
+                margin: 10px;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 全局加载遮罩 -->
+    <div class="loading-overlay" id="globalLoading">
+        <div style="text-align: center;">
+            <i class="fas fa-spinner fa-spin fa-3x" style="color: #007AFF;"></i>
+            <p style="margin-top: 20px; font-size: 16px; color: #333;">加载中...</p>
+        </div>
+    </div>
+    
+    <!-- 连接状态指示器 -->
+    <div id="connectionStatus" class="connection-status connection-offline">
+        <span class="connection-icon"></span>
+        <span>本地数据</span>
+    </div>
+    
+    <!-- 浮动帮助按钮 -->
+    <button id="cloudHelpBtn" title="连接云端数据库">
+        ☁️
+    </button>
+    
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>小李的基金持仓</h1>
+                <p class="subtitle">实时跟踪基金表现</p>
+                <div class="cloud-badge" id="cloudBadge" style="display: none;">云端同步</div>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link active">持仓总览</a>
+                <a href="login.html" class="nav-link">后台管理</a>
+            </nav>
+            <div class="header-info">
+                <div class="date-display">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="currentDate">加载中...</span>
+                </div>
+                <div class="last-update">
+                    <i class="fas fa-sync-alt"></i>
+                    <span id="lastUpdateTime">最近更新: --:--:--</span>
+                </div>
+                <div class="data-source">
+                    <i class="fas fa-database"></i>
+                    <span id="dataSource">本地数据</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 顶部统计信息 -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>总持仓金额</h3>
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div class="stat-value" id="totalAmount">¥ 0.00</div>
+                    <div class="stat-change">
+                        <span id="totalChange" class="change-positive">+0.00%</span>
+                        <span id="totalGain">+¥0.00</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>当日收益</h3>
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-value" id="dailyEarnings">¥ 0.00</div>
+                    <div class="stat-info">较昨日</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>持有基金数</h3>
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="stat-value" id="fundCount">0</div>
+                    <div class="stat-info">只基金</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>更新时间</h3>
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-value" id="updateTime">--:--:--</div>
+                    <div class="stat-info">
+                        <button id="refreshBtn" class="refresh-btn">
+                            <i class="fas fa-redo"></i> 手动更新
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 基金持仓列表 -->
+        <section class="funds-section">
+            <div class="section-header">
+                <h2><i class="fas fa-list"></i> 基金持仓详情</h2>
+                <div class="section-actions">
+                    <div class="data-controls">
+                        <button id="switchDataSource" class="data-source-btn">
+                            <i class="fas fa-cloud-upload-alt"></i> 切换到云端
+                        </button>
+                        <button id="importData" class="import-btn">
+                            <i class="fas fa-file-import"></i> 导入数据
+                        </button>
+                    </div>
+                    <div class="sort-controls">
+                        <span class="sort-label">排序:</span>
+                        <select id="sortSelect" class="sort-select">
+                            <option value="percent">持仓比例</option>
+                            <option value="gain">当日涨幅</option>
+                            <option value="amount">持仓金额</option>
+                            <option value="name">基金名称</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="funds-container" id="fundsContainer">
+                <!-- 基金卡片会在这里动态生成 -->
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p id="loadingText">正在加载数据...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 操作记录 -->
+        <section class="operations-section">
+            <div class="section-header">
+                <h2><i class="fas fa-history"></i> 最近操作记录</h2>
+                <button id="syncBtn" class="sync-btn">
+                    <i class="fas fa-sync"></i> 立即同步
+                </button>
+            </div>
+            <div class="operations-list" id="operationsList">
+                <!-- 操作记录会在这里动态生成 -->
+                <div class="no-data">正在加载数据...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2023 小李的基金持仓管理系统 | <span id="syncStatus">数据同步中...</span></p>
+            <p class="footer-note">
+                <i class="fas fa-exclamation-circle"></i>
+                风险提示：基金有风险，投资需谨慎
+            </p>
+        </div>
+    </footer>
+
+    <!-- 修复的数据源选择模态框 -->
+    <div class="modal" id="dataSourceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="margin: 0; font-size: 20px;">连接云端数据库</h3>
+                <button class="close-btn" title="关闭">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4 style="margin-top: 0; margin-bottom: 20px;">选择数据源</h4>
+                
+                <div class="data-option" id="localOption">
+                    <div class="option-icon">
+                        <i class="fas fa-laptop"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin-top: 0;">本地数据</h4>
+                        <p>使用本地JSON文件，无需网络</p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>✓ 无需网络连接</li>
+                            <li>✓ 响应速度快</li>
+                            <li>✗ 无法多设备同步</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="data-option" id="cloudOption">
+                    <div class="option-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin-top: 0;">云端数据 (推荐)</h4>
+                        <p>使用Supabase云数据库，多设备同步</p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>✓ 多设备实时同步</li>
+                            <li>✓ 手机随时查看</li>
+                            <li>✓ 数据安全备份</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div id="cloudConfigForm" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <h4 style="margin-top: 0;">配置Supabase连接</h4>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Supabase URL:</label>
+                        <input type="text" id="supabaseUrl" placeholder="https://你的项目id.supabase.co" 
+                               value="https://zskaoqudsvlftmscqhq.supabase.co"
+                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; box-sizing: border-box;">
+                        <small style="color: #666; display: block; margin-top: 5px;">从Supabase项目设置 → API → Project URL获取</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Anon Key:</label>
+                        <input type="password" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..." 
+                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; box-sizing: border-box;">
+                        <small style="color: #666; display: block; margin-top: 5px;">从Supabase项目设置 → API → anon/public key获取</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="loadConfigBtn" style="padding: 8px 15px; background: #8E8E93; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-history"></i> 加载保存的配置
+                        </button>
+                        <button id="clearConfigBtn" style="padding: 8px 15px; background: #FF3B30; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-trash"></i> 清除配置
+                        </button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button id="testConnectionBtn" style="padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-plug"></i> 测试连接
+                        </button>
+                        <button id="saveConfigBtn" style="padding: 10px 20px; background: #34C759; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-save"></i> 保存配置
+                        </button>
+                    </div>
+                    
+                    <div id="connectionResult" style="margin-top: 15px; padding: 12px; border-radius: 6px; display: none; border: 1px solid transparent;"></div>
+                    
+                    <div id="tableCheckResult" style="margin-top: 15px; padding: 12px; border-radius: 6px; display: none; border: 1px solid transparent;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改后的JavaScript文件引用顺序 -->
+    <!-- 先加载基础库 -->
+    <script src="js/storage.js"></script>
+    <script src="js/fundData.js"></script>
+    
+    <!-- 然后加载数据修复脚本 -->
+    <script src="js/data-fix.js"></script>
+    
+    <!-- 然后加载主要逻辑 -->
+    <script src="js/main.js" defer></script>
+    
+    <!-- 最后加载Supabase相关 -->
+    <script src="js/supabase-client.js" defer></script>
+    
+    <!-- 修复的云端功能脚本 -->
+    <script>
+        // 全局变量
+        let currentDataSource = 'local'; // 'local' 或 'cloud'
+        let supabaseConfig = null;
+        let pageInitialized = false;
+        let autoRefreshTimer = null;
+        let isRefreshing = false;
+        let isPageVisible = true;
+        
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面基础加载完成');
+            
+            // 初始化日期和时间
+            updateCurrentDate();
+            updateTime();
+            
+            // 设置自动更新时间
+            setInterval(updateTime, 1000);
+            
+            // 检查云端配置
+            checkCloudConfig();
+            
+            // 绑定所有按钮事件
+            bindAllButtonEvents();
+            
+            // 设置页面可见性监听
+            setupPageVisibility();
+            
+            // 显示初始数据
+            showInitialData();
+            
+            // 启动自动刷新
+            startAutoRefresh(60000); // 60秒自动刷新
+            
+            pageInitialized = true;
+            console.log('页面初始化完成');
+        });
+        
+        // 页面可见性设置
+        function setupPageVisibility() {
+            // 监听页面可见性变化
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            // 监听页面离开事件
+            window.addEventListener('pagehide', handlePageHide);
+            window.addEventListener('pageshow', handlePageShow);
+            
+            // 监听窗口焦点变化
+            window.addEventListener('focus', handleWindowFocus);
+            window.addEventListener('blur', handleWindowBlur);
+        }
+        
+        // 处理页面可见性变化
+        function handleVisibilityChange() {
+            isPageVisible = !document.hidden;
+            console.log('页面可见性变化:', isPageVisible ? '可见' : '隐藏');
+            
+            if (isPageVisible) {
+                // 页面重新可见，检查数据
+                console.log('页面重新激活，检查数据状态');
+                setTimeout(checkDataStatus, 1000);
+            }
+        }
+        
+        // 处理页面隐藏
+        function handlePageHide() {
+            console.log('页面即将隐藏，停止自动刷新');
+            stopAutoRefresh();
+        }
+        
+        // 处理页面显示
+        function handlePageShow() {
+            console.log('页面显示，恢复自动刷新');
+            startAutoRefresh(60000);
+        }
+        
+        // 处理窗口焦点
+        function handleWindowFocus() {
+            console.log('窗口获得焦点');
+            if (!isPageVisible) {
+                isPageVisible = true;
+                startAutoRefresh(60000);
+            }
+        }
+        
+        // 处理窗口失去焦点
+        function handleWindowBlur() {
+            console.log('窗口失去焦点');
+            // 不立即停止刷新，只在页面不可见时停止
+        }
+        
+        // 检查数据状态
+        function checkDataStatus() {
+            const fundsContainer = document.getElementById('fundsContainer');
+            if (!fundsContainer) return;
+            
+            // 检查是否有数据显示
+            const hasData = fundsContainer.querySelector('.fund-card') || 
+                           fundsContainer.textContent.includes('华夏') ||
+                           fundsContainer.textContent.includes('易方达') ||
+                           fundsContainer.textContent.includes('招商');
+            
+            if (!hasData || fundsContainer.innerHTML.includes('暂无基金数据')) {
+                console.log('检测到数据丢失或为空，重新加载');
+                showLoading(true);
+                setTimeout(() => {
+                    loadData();
+                    showLoading(false);
+                }, 500);
+            }
+        }
+        
+        // 显示/隐藏加载遮罩
+        function showLoading(show) {
+            const loadingOverlay = document.getElementById('globalLoading');
+            if (loadingOverlay) {
+                if (show) {
+                    loadingOverlay.classList.add('active');
+                } else {
+                    setTimeout(() => {
+                        loadingOverlay.classList.remove('active');
+                    }, 300);
+                }
+            }
+        }
+        
+        // 启动自动刷新
+        function startAutoRefresh(interval = 60000) {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+            }
+            
+            console.log('启动自动刷新，间隔:', interval + 'ms');
+            
+            autoRefreshTimer = setInterval(() => {
+                if (!isRefreshing && isPageVisible && document.visibilityState === 'visible') {
+                    isRefreshing = true;
+                    console.log('自动刷新数据...');
+                    
+                    // 保存当前滚动位置
+                    const scrollPos = window.scrollY;
+                    
+                    // 刷新数据
+                    loadData().finally(() => {
+                        isRefreshing = false;
+                        // 恢复滚动位置
+                        setTimeout(() => {
+                            if (Math.abs(window.scrollY - scrollPos) > 100) {
+                                window.scrollTo(0, scrollPos);
+                            }
+                        }, 100);
+                    });
+                }
+            }, interval);
+        }
+        
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+                console.log('停止自动刷新');
+            }
+        }
+        
+        // 更新当前日期
+        function updateCurrentDate() {
+            try {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('zh-CN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                const dateElement = document.getElementById('currentDate');
+                if (dateElement) {
+                    dateElement.textContent = dateStr;
+                }
+            } catch (error) {
+                console.error('更新日期失败:', error);
+            }
+        }
+        
+        // 更新时间显示
+        function updateTime() {
+            try {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                const updateTimeElement = document.getElementById('updateTime');
+                if (updateTimeElement) {
+                    updateTimeElement.textContent = timeStr;
+                }
+                
+                // 每10秒更新一次最近更新时间
+                if (now.getSeconds() % 10 === 0) {
+                    const lastUpdateElement = document.getElementById('lastUpdateTime');
+                    if (lastUpdateElement) {
+                        lastUpdateElement.textContent = '最近更新: ' + timeStr;
+                    }
+                }
+            } catch (error) {
+                console.error('更新时间失败:', error);
+            }
+        }
+        
+        // 检查云端配置
+        function checkCloudConfig() {
+            try {
+                const configStr = localStorage.getItem('supabaseConfig');
+                if (configStr) {
+                    supabaseConfig = JSON.parse(configStr);
+                    console.log('发现云端配置:', supabaseConfig.url);
+                    updateConnectionStatus('云端配置就绪', 'connection-offline');
+                } else {
+                    console.log('未发现云端配置');
+                }
+            } catch (error) {
+                console.error('检查云端配置失败:', error);
+                localStorage.removeItem('supabaseConfig');
+            }
+        }
+        
+        // 绑定所有按钮事件
+        function bindAllButtonEvents() {
+            // 刷新按钮
+            bindClick('refreshBtn', function() {
+                console.log('手动刷新数据');
+                showLoading(true);
+                loadData().finally(() => {
+                    setTimeout(() => showLoading(false), 500);
+                });
+            });
+            
+            // 切换数据源按钮
+            bindClick('switchDataSource', showDataSourceModal);
+            
+            // 导入数据按钮
+            bindClick('importData', function() {
+                alert('导入功能开发中...');
+            });
+            
+            // 同步按钮
+            bindClick('syncBtn', function() {
+                alert('同步功能开发中...');
+            });
+            
+            // 排序选择
+            const sortSelect = document.getElementById('sortSelect');
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    console.log('按' + this.value + '排序');
+                });
+            }
+            
+            // 浮动帮助按钮
+            bindClick('cloudHelpBtn', showDataSourceModal);
+            
+            // 数据源选项
+            bindClick('localOption', function() {
+                selectDataSource('local');
+            });
+            
+            bindClick('cloudOption', function() {
+                selectDataSource('cloud');
+            });
+            
+            // 模态框关闭按钮
+            const closeBtn = document.querySelector('.modal .close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeDataSourceModal);
+            }
+            
+            // 模态框外部点击关闭
+            const modal = document.getElementById('dataSourceModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeDataSourceModal();
+                    }
+                });
+            }
+            
+            // 配置相关按钮
+            bindClick('loadConfigBtn', loadSavedConfig);
+            bindClick('clearConfigBtn', clearCloudConfig);
+            bindClick('testConnectionBtn', testCloudConnection);
+            bindClick('saveConfigBtn', saveCloudConfig);
+        }
+        
+        // 绑定点击事件辅助函数
+        function bindClick(elementId, handler) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                // 移除现有的事件监听器
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+                
+                // 添加新的事件监听器
+                newElement.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handler();
+                });
+            }
+        }
+        
+        // 显示初始数据
+        function showInitialData() {
+            console.log('显示初始数据');
+            
+            // 设置加载文本
+            const loadingText = document.getElementById('loadingText');
+            if (loadingText) {
+                loadingText.textContent = '正在初始化数据...';
+            }
+            
+            // 加载数据（使用setTimeout避免阻塞）
+            setTimeout(() => {
+                showLoading(true);
+                loadData().finally(() => {
+                    setTimeout(() => showLoading(false), 500);
+                });
+            }, 500);
+        }
+        
+        // 加载数据
+        async function loadData() {
+            console.log('开始加载数据，当前模式:', currentDataSource);
+            
+            if (currentDataSource === 'local') {
+                await loadLocalData();
+            } else {
+                await loadCloudData();
+            }
+            
+            // 数据加载完成后，备份到本地存储
+            backupCurrentData();
+        }
+        
+        // 备份当前数据
+        function backupCurrentData() {
+            try {
+                const fundsContainer = document.getElementById('fundsContainer');
+                if (fundsContainer) {
+                    const fundCards = fundsContainer.querySelectorAll('.fund-card');
+                    if (fundCards.length > 0) {
+                        const backupData = {
+                            timestamp: new Date().toISOString(),
+                            fundCount: fundCards.length,
+                            html: fundsContainer.innerHTML
+                        };
+                        localStorage.setItem('fundData_backup', JSON.stringify(backupData));
+                        console.log('数据备份完成，基金数量:', fundCards.length);
+                    }
+                }
+            } catch (error) {
+                console.error('数据备份失败:', error);
+            }
+        }
+        
+        // 加载本地数据
+        async function loadLocalData() {
+            console.log('加载本地数据');
+            updateConnectionStatus('本地数据', 'connection-offline');
+            
+            try {
+                // 先尝试从备份恢复
+                const backupData = restoreBackupData();
+                if (backupData) {
+                    console.log('从备份恢复数据，时间:', backupData.timestamp);
+                    const fundsContainer = document.getElementById('fundsContainer');
+                    if (fundsContainer) {
+                        fundsContainer.innerHTML = backupData.html;
+                        updateDataSourceUI('local');
+                        return;
+                    }
+                }
+                
+                // 检查是否有本地数据函数
+                if (typeof window.loadLocalFundData === 'function') {
+                    console.log('调用本地数据加载函数');
+                    await window.loadLocalFundData();
+                } else {
+                    console.log('使用备用数据加载');
+                    // 显示示例数据
+                    displaySampleFunds();
+                }
+                
+                // 更新UI状态
+                updateDataSourceUI('local');
+                
+            } catch (error) {
+                console.error('加载本地数据失败:', error);
+                displaySampleFunds();
+            }
+        }
+        
+        // 从备份恢复数据
+        function restoreBackupData() {
+            try {
+                const backupStr = localStorage.getItem('fundData_backup');
+                if (backupStr) {
+                    return JSON.parse(backupStr);
+                }
+            } catch (error) {
+                console.error('恢复备份数据失败:', error);
+            }
+            return null;
+        }
+        
+        // 加载云端数据
+        async function loadCloudData() {
+            console.log('加载云端数据');
+            
+            if (!supabaseConfig) {
+                console.log('没有云端配置，显示配置界面');
+                showDataSourceModal();
+                selectDataSource('cloud');
+                return;
+            }
+            
+            updateConnectionStatus('连接中...', 'connection-offline');
+            
+            try {
+                // 检查Supabase客户端
+                if (!window.supabaseClient || !window.supabaseClient.init) {
+                    throw new Error('Supabase客户端未加载');
+                }
+                
+                // 初始化客户端
+                const initSuccess = window.supabaseClient.init(supabaseConfig.url, supabaseConfig.anonKey);
+                if (!initSuccess) {
+                    throw new Error('初始化失败');
+                }
+                
+                // 测试连接
+                const connected = await window.supabaseClient.testConnection();
+                if (!connected) {
+                    throw new Error('连接测试失败');
+                }
+                
+                // 获取数据
+                const cloudData = await window.supabaseClient.getFundsData();
+                
+                if (cloudData && cloudData.length > 0) {
+                    // 显示云端数据
+                    displayCloudData(cloudData);
+                    updateConnectionStatus('云端已连接', 'connection-online');
+                    updateDataSourceUI('cloud');
+                } else {
+                    // 没有数据，显示示例
+                    console.log('云端没有数据，显示示例');
+                    displaySampleFunds(true);
+                    updateConnectionStatus('云端已连接', 'connection-online');
+                    updateDataSourceUI('cloud');
+                }
+                
+            } catch (error) {
+                console.error('加载云端数据失败:', error);
+                updateConnectionStatus('连接失败', 'connection-error');
+                
+                // 失败时切换到本地
+                currentDataSource = 'local';
+                loadLocalData();
+            }
+        }
+        
+        // 更新数据源UI状态
+        function updateDataSourceUI(source) {
+            const dataSourceElement = document.getElementById('dataSource');
+            const cloudBadge = document.getElementById('cloudBadge');
+            const syncStatus = document.getElementById('syncStatus');
+            
+            if (source === 'local') {
+                if (dataSourceElement) dataSourceElement.textContent = '本地数据';
+                if (cloudBadge) cloudBadge.style.display = 'none';
+                if (syncStatus) syncStatus.textContent = '本地模式';
+            } else {
+                if (dataSourceElement) dataSourceElement.textContent = '云端数据';
+                if (cloudBadge) cloudBadge.style.display = 'block';
+                if (syncStatus) syncStatus.textContent = '云端同步';
+            }
+        }
+        
+        // 显示数据源选择模态框
+        function showDataSourceModal() {
+            console.log('显示数据源选择模态框');
+            const modal = document.getElementById('dataSourceModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.classList.add('modal-open');
+                // 加载保存的配置
+                loadSavedConfig();
+            }
+        }
+        
+        // 关闭数据源模态框
+        function closeDataSourceModal() {
+            const modal = document.getElementById('dataSourceModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                const resultDiv = document.getElementById('connectionResult');
+                if (resultDiv) {
+                    resultDiv.style.display = 'none';
+                    resultDiv.innerHTML = '';
+                }
+                const tableDiv = document.getElementById('tableCheckResult');
+                if (tableDiv) {
+                    tableDiv.style.display = 'none';
+                    tableDiv.innerHTML = '';
+                }
+            }
+        }
+        
+        // 选择数据源
+        function selectDataSource(source) {
+            console.log('选择数据源:', source);
+            
+            const localOption = document.getElementById('localOption');
+            const cloudOption = document.getElementById('cloudOption');
+            const cloudForm = document.getElementById('cloudConfigForm');
+            
+            if (source === 'local') {
+                if (localOption) localOption.classList.add('selected');
+                if (cloudOption) cloudOption.classList.remove('selected');
+                if (cloudForm) cloudForm.style.display = 'none';
+                
+                currentDataSource = 'local';
+                closeDataSourceModal();
+                showLoading(true);
+                loadData().finally(() => {
+                    setTimeout(() => showLoading(false), 500);
+                });
+                
+            } else if (source === 'cloud') {
+                if (localOption) localOption.classList.remove('selected');
+                if (cloudOption) cloudOption.classList.add('selected');
+                if (cloudForm) cloudForm.style.display = 'block';
+            }
+        }
+        
+        // 加载保存的配置
+        function loadSavedConfig() {
+            const configStr = localStorage.getItem('supabaseConfig');
+            if (configStr) {
+                try {
+                    const config = JSON.parse(configStr);
+                    const urlInput = document.getElementById('supabaseUrl');
+                    const keyInput = document.getElementById('supabaseKey');
+                    
+                    if (urlInput) urlInput.value = config.url || '';
+                    if (keyInput) keyInput.value = config.anonKey || '';
+                    
+                    console.log('已加载保存的配置');
+                    
+                    // 显示成功提示
+                    showResultMessage('connectionResult', '已加载保存的配置', 'info');
+                } catch (error) {
+                    console.error('加载配置失败:', error);
+                    showResultMessage('connectionResult', '加载配置失败: ' + error.message, 'error');
+                }
+            } else {
+                showResultMessage('connectionResult', '没有找到保存的配置', 'info');
+            }
+        }
+        
+        // 清除云端配置
+        function clearCloudConfig() {
+            if (confirm('确定要清除保存的云端配置吗？')) {
+                localStorage.removeItem('supabaseConfig');
+                supabaseConfig = null;
+                
+                const urlInput = document.getElementById('supabaseUrl');
+                const keyInput = document.getElementById('supabaseKey');
+                if (urlInput) urlInput.value = 'https://zskaoqudsvlftmscqhq.supabase.co';
+                if (keyInput) keyInput.value = '';
+                
+                console.log('云端配置已清除');
+                showResultMessage('connectionResult', '配置已清除', 'success');
+            }
+        }
+        
+        // 测试云端连接
+        async function testCloudConnection() {
+            console.log('测试云端连接');
+            
+            const urlInput = document.getElementById('supabaseUrl');
+            const keyInput = document.getElementById('supabaseKey');
+            
+            if (!urlInput || !keyInput) {
+                alert('找不到配置输入框');
+                return;
+            }
+            
+            const url = urlInput.value.trim();
+            const key = keyInput.value.trim();
+            
+            if (!url || !key) {
+                alert('请填写完整的Supabase配置');
+                return;
+            }
+            
+            if (!url.includes('.supabase.co')) {
+                alert('URL格式不正确，应该是类似：https://xxxxx.supabase.co');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('connectionResult');
+            if (!resultDiv) return;
+            
+            showResultMessage('connectionResult', '<i class="fas fa-spinner fa-spin"></i> 正在测试连接...', 'loading');
+            
+            try {
+                // 检查Supabase客户端
+                if (!window.supabaseClient || !window.supabaseClient.init) {
+                    throw new Error('Supabase客户端模块未加载');
+                }
+                
+                // 初始化
+                const initSuccess = window.supabaseClient.init(url, key);
+                if (!initSuccess) {
+                    throw new Error('初始化失败');
+                }
+                
+                // 测试连接
+                const connected = await window.supabaseClient.testConnection();
+                
+                if (connected) {
+                    showResultMessage('connectionResult', '<i class="fas fa-check-circle"></i> ✅ 连接成功！Supabase服务正常。', 'success');
+                    
+                    // 检查表
+                    const tableDiv = document.getElementById('tableCheckResult');
+                    if (tableDiv) {
+                        tableDiv.innerHTML = '<div style="color: #FF9500;"><i class="fas fa-spinner fa-spin"></i> 正在检查funds表...</div>';
+                        tableDiv.style.display = 'block';
+                        tableDiv.style.color = '#FF9500';
+                        tableDiv.style.background = '#FFF3E0';
+                        tableDiv.style.borderColor = '#FFE0B2';
+                        
+                        const tableExists = await window.supabaseClient.testTableExists();
+                        if (tableExists) {
+                            tableDiv.innerHTML = '<div><i class="fas fa-check-circle"></i> ✅ funds表存在，可以正常使用。</div>';
+                            tableDiv.style.color = '#34C759';
+                            tableDiv.style.background = '#E8F5E9';
+                            tableDiv.style.borderColor = '#C8E6C9';
+                        } else {
+                            tableDiv.innerHTML = '<div><i class="fas fa-exclamation-triangle"></i> ⚠️ funds表不存在，请先在Supabase控制台创建表。</div>';
+                            tableDiv.style.color = '#FF3B30';
+                            tableDiv.style.background = '#FFEBEE';
+                            tableDiv.style.borderColor = '#FFCDD2';
+                        }
+                    }
+                    
+                } else {
+                    showResultMessage('connectionResult', '<i class="fas fa-times-circle"></i> ❌ 连接失败，请检查配置和网络。', 'error');
+                }
+                
+            } catch (error) {
+                console.error('连接测试异常:', error);
+                showResultMessage('connectionResult', '<i class="fas fa-exclamation-triangle"></i> 连接异常: ' + error.message, 'error');
+            }
+        }
+        
+        // 显示结果消息
+        function showResultMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            element.style.display = 'block';
+            element.innerHTML = message;
+            
+            // 根据类型设置样式
+            switch(type) {
+                case 'success':
+                    element.style.color = '#34C759';
+                    element.style.background = '#E8F5E9';
+                    element.style.borderColor = '#C8E6C9';
+                    break;
+                case 'error':
+                    element.style.color = '#FF3B30';
+                    element.style.background = '#FFEBEE';
+                    element.style.borderColor = '#FFCDD2';
+                    break;
+                case 'info':
+                    element.style.color = '#007AFF';
+                    element.style.background = '#E3F2FD';
+                    element.style.borderColor = '#BBDEFB';
+                    break;
+                case 'loading':
+                    element.style.color = '#FF9500';
+                    element.style.background = '#FFF3E0';
+                    element.style.borderColor = '#FFE0B2';
+                    break;
+            }
+        }
+        
+        // 保存云端配置
+        function saveCloudConfig() {
+            console.log('保存云端配置');
+            
+            const urlInput = document.getElementById('supabaseUrl');
+            const keyInput = document.getElementById('supabaseKey');
+            
+            if (!urlInput || !keyInput) {
+                alert('找不到配置输入框');
+                return;
+            }
+            
+            const url = urlInput.value.trim();
+            const key = keyInput.value.trim();
+            
+            if (!url || !key) {
+                alert('请填写完整的配置信息');
+                return;
+            }
+            
+            if (!url.includes('.supabase.co')) {
+                alert('URL格式不正确');
+                return;
+            }
+            
+            supabaseConfig = { url, anonKey: key };
+            localStorage.setItem('supabaseConfig', JSON.stringify(supabaseConfig));
+            
+            showResultMessage('connectionResult', '<i class="fas fa-check-circle"></i> 配置已保存！正在切换到云端模式...', 'success');
+            
+            console.log('云端配置已保存:', url);
+            
+            // 自动切换到云端
+            setTimeout(() => {
+                currentDataSource = 'cloud';
+                closeDataSourceModal();
+                showLoading(true);
+                loadData().finally(() => {
+                    setTimeout(() => showLoading(false), 500);
+                });
+            }, 1500);
+        }
+        
+        // 更新连接状态显示
+        function updateConnectionStatus(text, className) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (statusEl) {
+                statusEl.innerHTML = `<span class="connection-icon"></span><span>${text}</span>`;
+                statusEl.className = `connection-status ${className}`;
+            }
+        }
+        
+        // 显示云端数据
+        function displayCloudData(data) {
+            const fundsContainer = document.getElementById('fundsContainer');
+            const loading = document.querySelector('.loading');
+            
+            if (!fundsContainer) return;
+            
+            if (loading) loading.style.display = 'none';
+            
+            if (!data || data.length === 0) {
+                fundsContainer.innerHTML = `
+                    <div class="fund-card">
+                        <div class="fund-header">
+                            <h3 class="fund-name">云端数据为空</h3>
+                        </div>
+                        <div class="fund-details">
+                            <p>云端数据库中没有基金数据。</p>
+                            <p>请先在后台管理页面添加数据。</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            data.forEach(fund => {
+                const amount = fund.amount ? `¥${parseFloat(fund.amount).toLocaleString('zh-CN', {minimumFractionDigits: 2})}` : '¥0.00';
+                const percentage = fund.percentage ? `${parseFloat(fund.percentage).toFixed(2)}%` : '0.00%';
+                const change = fund.daily_change ? parseFloat(fund.daily_change) : 0;
+                const changeClass = change >= 0 ? 'change-positive' : 'change-negative';
+                const changeSign = change >= 0 ? '+' : '';
+                
+                html += `
+                    <div class="fund-card">
+                        <div class="fund-header">
+                            <h3 class="fund-name">${fund.name || '未命名基金'}</h3>
+                            <div class="fund-amount">${amount}</div>
+                        </div>
+                        <div class="fund-details">
+                            <div class="detail-item">
+                                <span class="detail-label">持仓比例</span>
+                                <span class="detail-value">${percentage}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">基金代码</span>
+                                <span class="detail-value">${fund.code || '--'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">当日涨幅</span>
+                                <span class="detail-value ${changeClass}">${changeSign}${change.toFixed(2)}%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">分类</span>
+                                <span class="detail-value">${fund.category || '未分类'}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 11px; color: #999;">
+                            <i class="fas fa-cloud"></i> 云端数据 | 更新: ${new Date(fund.updated_at || fund.created_at || new Date()).toLocaleString('zh-CN')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            fundsContainer.innerHTML = html;
+            
+            // 更新统计数据
+            updateStatsFromData(data);
+        }
+        
+        // 显示示例基金数据
+        function displaySampleFunds(isCloud = false) {
+            const fundsContainer = document.getElementById('fundsContainer');
+            const loading = document.querySelector('.loading');
+            
+            if (!fundsContainer) return;
+            
+            if (loading) loading.style.display = 'none';
+            
+            const source = isCloud ? '云端' : '本地';
+            const sampleFunds = [
+                {
+                    name: '华夏成长混合',
+                    amount: 50000,
+                    percentage: 35.67,
+                    unit_value: 2.3560,
+                    daily_change: 1.23,
+                    category: '混合型'
+                },
+                {
+                    name: '易方达消费行业',
+                    amount: 30000,
+                    percentage: 21.43,
+                    unit_value: 3.1240,
+                    daily_change: 0.87,
+                    category: '股票型'
+                },
+                {
+                    name: '招商中证白酒',
+                    amount: 20000,
+                    percentage: 14.29,
+                    unit_value: 0.8560,
+                    daily_change: 2.15,
+                    category: '指数型'
+                }
+            ];
+            
+            let html = '';
+            let totalAmount = 0;
+            
+            sampleFunds.forEach(fund => {
+                totalAmount += fund.amount;
+                const changeClass = fund.daily_change >= 0 ? 'change-positive' : 'change-negative';
+                const changeSign = fund.daily_change >= 0 ? '+' : '';
+                
+                html += `
+                    <div class="fund-card">
+                        <div class="fund-header">
+                            <h3 class="fund-name">${fund.name}</h3>
+                            <div class="fund-amount">¥${fund.amount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        <div class="fund-details">
+                            <div class="detail-item">
+                                <span class="detail-label">持仓比例</span>
+                                <span class="detail-value">${fund.percentage.toFixed(2)}%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">单位净值</span>
+                                <span class="detail-value">${fund.unit_value.toFixed(4)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">当日涨跌</span>
+                                <span class="detail-value ${changeClass}">${changeSign}${fund.daily_change.toFixed(2)}%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">基金类型</span>
+                                <span class="detail-value">${fund.category}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                            <i class="fas fa-info-circle"></i> ${source}示例数据
+                        </div>
+                    </div>
+                `;
+            });
+            
+            fundsContainer.innerHTML = html;
+            
+            // 更新统计数据
+            updateStatsFromSample(totalAmount, sampleFunds.length);
+        }
+        
+        // 从数据更新统计
+        function updateStatsFromData(data) {
+            if (!data || data.length === 0) return;
+            
+            const totalAmount = data.reduce((sum, fund) => sum + (parseFloat(fund.amount) || 0), 0);
+            const fundCount = data.length;
+            
+            const totalAmountElement = document.getElementById('totalAmount');
+            const fundCountElement = document.getElementById('fundCount');
+            
+            if (totalAmountElement) {
+                totalAmountElement.textContent = '¥ ' + totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2});
+            }
+            
+            if (fundCountElement) {
+                fundCountElement.textContent = fundCount;
+            }
+        }
+        
+        // 从示例数据更新统计
+        function updateStatsFromSample(totalAmount, fundCount) {
+            const totalAmountElement = document.getElementById('totalAmount');
+            const fundCountElement = document.getElementById('fundCount');
+            const dailyEarningsElement = document.getElementById('dailyEarnings');
+            const totalChangeElement = document.getElementById('totalChange');
+            
+            if (totalAmountElement) {
+                totalAmountElement.textContent = '¥ ' + totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2});
+            }
+            
+            if (fundCountElement) {
+                fundCountElement.textContent = fundCount;
+            }
+            
+            if (dailyEarningsElement) {
+                const dailyEarnings = totalAmount * 0.0085; // 0.85%收益
+                dailyEarningsElement.textContent = '¥ ' + dailyEarnings.toLocaleString('zh-CN', {minimumFractionDigits: 2});
+            }
+            
+            if (totalChangeElement) {
+                totalChangeElement.textContent = '+0.85%';
+                totalChangeElement.className = 'change-positive';
+            }
+        }
+    </script>
+</body>
+</html>
