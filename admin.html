@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小李持仓管理 - 后台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-section {
+            background: white;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 15px 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4a6cf7;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .admin-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .admin-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .admin-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(26, 35, 126, 0.2);
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #ddd;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+        
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn-danger:hover {
+            background: #ff3742;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.2);
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        
+        .edit-btn {
+            background: #4a6cf7;
+            color: white;
+        }
+        
+        .delete-btn {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .positive { color: #00b894; }
+        .negative { color: #ff4757; }
+        
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .message.success {
+            background: #d4f8e8;
+            color: #00b894;
+            border: 1px solid #00b894;
+        }
+        
+        .message.error {
+            background: #fff5f5;
+            color: #ff4757;
+            border: 1px solid #ff4757;
+        }
+        
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .sector-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 2px;
+            background: #f0f2ff;
+            color: #4a6cf7;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .text-muted {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .badge {
+            background: #e9ecef;
+            color: #495057;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .form-hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>小李的基金持仓</h1>
+                <p class="subtitle">后台管理系统</p>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">查看前台</a>
+                <a href="#" id="logoutBtn" class="nav-link">退出登录</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 消息显示区域 -->
+        <div id="messageArea"></div>
+        
+        <!-- 添加基金表单 -->
+        <section class="admin-section">
+            <h2><i class="fas fa-plus-circle"></i> 添加/编辑基金</h2>
+            
+            <form id="fundForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fundCode">基金代码 *</label>
+                        <input type="text" id="fundCode" required placeholder="如：000001">
+                    </div>
+                    <div class="form-group">
+                        <label for="fundName">基金名称 *</label>
+                        <input type="text" id="fundName" required placeholder="如：华夏人工智能ETF">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="holdingAmount">持仓金额 (元) *</label>
+                        <input type="number" id="holdingAmount" required placeholder="如：10000" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="sector">所属板块 *</label>
+                        <select id="sector" required>
+                            <option value="">选择基金板块</option>
+                            <!-- 科技类 -->
+                            <option value="人工智能">人工智能</option>
+                            <option value="AI应用">AI应用</option>
+                            <option value="大科技">大科技</option>
+                            <option value="半导体">半导体</option>
+                            <option value="储存芯片">储存芯片</option>
+                            <option value="CPO">CPO</option>
+                            <option value="云计算">云计算</option>
+                            <option value="通信">通信</option>
+                            <option value="消费电子">消费电子</option>
+                            <option value="机器人">机器人</option>
+                            <option value="脑机接口">脑机接口</option>
+                            <option value="金融科技">金融科技</option>
+                            
+                            <!-- 新能源类 -->
+                            <option value="新能源">新能源</option>
+                            <option value="储能">储能</option>
+                            <option value="固态电池">固态电池</option>
+                            <option value="光伏">光伏</option>
+                            <option value="绿色电力">绿色电力</option>
+                            <option value="电网设备">电网设备</option>
+                            <option value="可控核聚变">可控核聚变</option>
+                            
+                            <!-- 材料资源类 -->
+                            <option value="稀土永磁">稀土永磁</option>
+                            <option value="有色金属">有色金属</option>
+                            <option value="化工">化工</option>
+                            <option value="油气资源">油气资源</option>
+                            <option value="煤炭">煤炭</option>
+                            <option value="钢铁">钢铁</option>
+                            <option value="黄金">黄金</option>
+                            <option value="黄金股">黄金股</option>
+                            
+                            <!-- 制造类 -->
+                            <option value="先进制造">先进制造</option>
+                            <option value="家用电器">家用电器</option>
+                            
+                            <!-- 医药健康类 -->
+                            <option value="医药">医药</option>
+                            <option value="医疗">医疗</option>
+                            <option value="创新药">创新药</option>
+                            <option value="养老产业">养老产业</option>
+                            
+                            <!-- 消费类 -->
+                            <option value="消费">消费</option>
+                            <option value="白酒">白酒</option>
+                            <option value="沪港深消费">沪港深消费</option>
+                            
+                            <!-- 金融类 -->
+                            <option value="银行">银行</option>
+                            <option value="证券保险">证券保险</option>
+                            <option value="可转债">可转债</option>
+                            <option value="债基">债基</option>
+                            <option value="混债">混债</option>
+                            <option value="现金流">现金流</option>
+                            
+                            <!-- 红利类 -->
+                            <option value="红利">红利</option>
+                            <option value="红利低波">红利低波</option>
+                            <option value="港股红利">港股红利</option>
+                            
+                            <!-- 指数类 -->
+                            <option value="创业板">创业板</option>
+                            <option value="科创板">科创板</option>
+                            <option value="中证500">中证500</option>
+                            <option value="双创50">双创50</option>
+                            <option value="恒生">恒生</option>
+                            <option value="恒生科技">恒生科技</option>
+                            <option value="标普">标普</option>
+                            
+                            <!-- 量化类 -->
+                            <option value="量化">量化</option>
+                            <option value="小微盘量化">小微盘量化</option>
+                            <option value="微盘股">微盘股</option>
+                            
+                            <!-- 其他 -->
+                            <option value="农林渔牧">农林渔牧</option>
+                            <option value="传媒游戏">传媒游戏</option>
+                            <option value="基建">基建</option>
+                            <option value="交通运输">交通运输</option>
+                            <option value="房地产">房地产</option>
+                            <option value="商业航天">商业航天</option>
+                            <option value="北证">北证</option>
+                            <option value="亚太">亚太</option>
+                            <option value="军工">军工</option>
+                            <option value="海外基金">海外基金</option>
+                            <option value="海外医药">海外医药</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="operationType">操作类型 *</label>
+                        <select id="operationType" required>
+                            <option value="">选择操作类型</option>
+                            <option value="add">加仓</option>
+                            <option value="reduce">减仓</option>
+                            <option value="clear">清仓</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="operationAmount">操作金额 (元)</label>
+                        <input type="number" id="operationAmount" placeholder="如：1000" step="0.01">
+                        <small class="form-hint">减仓或清仓时填写</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="operationDate">操作日期</label>
+                        <input type="date" id="operationDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="netValue">实时净值</label>
+                        <input type="number" id="netValue" placeholder="如：1.2345" step="0.0001">
+                        <small class="form-hint">不填则自动生成模拟净值</small>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="resetBtn" class="btn-secondary">
+                        <i class="fas fa-redo"></i> 重置
+                    </button>
+                    <button type="submit" id="saveBtn" class="btn-primary">
+                        <i class="fas fa-save"></i> 保存基金
+                    </button>
+                </div>
+                
+                <input type="hidden" id="editId">
+            </form>
+        </section>
+
+        <!-- 基金列表 -->
+        <section class="admin-section">
+            <h2><i class="fas fa-list"></i> 基金列表</h2>
+            <div style="overflow-x: auto;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>基金代码</th>
+                            <th>基金名称</th>
+                            <th>板块</th>
+                            <th>持仓金额</th>
+                            <th>实时净值</th>
+                            <th>当日涨幅</th>
+                            <th>操作记录</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fundsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center">正在加载基金数据...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 数据管理 -->
+        <section class="admin-section">
+            <h2><i class="fas fa-database"></i> 数据管理</h2>
+            <div style="display: flex; gap: 15px; margin-top: 15px;">
+                <button id="exportBtn" class="btn-secondary">
+                    <i class="fas fa-download"></i> 导出数据
+                </button>
+                <button id="importBtn" class="btn-secondary">
+                    <i class="fas fa-upload"></i> 导入数据
+                </button>
+                <button id="clearAllBtn" class="btn-danger">
+                    <i class="fas fa-trash"></i> 清空所有数据
+                </button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;">
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2023 小李的基金持仓管理系统 | 后台管理界面</p>
+            <p class="footer-note">
+                <i class="fas fa-exclamation-circle"></i>
+                请谨慎操作，所有修改将实时同步到前台页面
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('后台管理页面加载完成');
+            
+            // 检查登录状态
+            if (!checkLogin()) return;
+            
+            // 设置默认日期
+            setDefaultDate();
+            
+            // 加载基金数据
+            loadFundsTable();
+            
+            // 绑定事件
+            bindEvents();
+        });
+        
+        // 检查登录状态
+        function checkLogin() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                alert('请先登录！');
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+        
+        // 设置默认日期
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('operationDate').value = today;
+        }
+        
+        // 绑定事件
+        function bindEvents() {
+            // 退出登录
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                if (confirm('确定要退出登录吗？')) {
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('loginTime');
+                    window.location.href = 'login.html';
+                }
+            });
+            
+            // 表单提交
+            document.getElementById('fundForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveFund();
+            });
+            
+            // 重置按钮
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                resetForm();
+            });
+            
+            // 数据管理按钮
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+            document.getElementById('importBtn').addEventListener('click', function() {
+                document.getElementById('importFile').click();
+            });
+            document.getElementById('importFile').addEventListener('change', importData);
+            document.getElementById('clearAllBtn').addEventListener('click', confirmClearAll);
+            
+            // 基金代码输入时自动填写净值
+            document.getElementById('fundCode').addEventListener('blur', function() {
+                const code = this.value.trim();
+                if (code && !document.getElementById('netValue').value) {
+                    // 模拟获取净值
+                    const mockNetValue = (1 + Math.random() * 2).toFixed(4);
+                    document.getElementById('netValue').value = mockNetValue;
+                }
+            });
+        }
+        
+        // 加载基金表格
+        function loadFundsTable() {
+            const tbody = document.getElementById('fundsTableBody');
+            
+            // 从本地存储获取数据
+            const funds = getFundsFromStorage();
+            
+            if (!funds || funds.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 40px; color: #999;">
+                            暂无基金数据，请添加第一只基金
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            funds.forEach(fund => {
+                const changeClass = fund.dailyChange >= 0 ? 'positive' : 'negative';
+                const changeSymbol = fund.dailyChange >= 0 ? '+' : '';
+                const operationCount = fund.operations ? fund.operations.length : 0;
+                
+                html += `
+                    <tr data-id="${fund.id}">
+                        <td><strong>${fund.code}</strong></td>
+                        <td>
+                            <div><strong>${fund.name}</strong></div>
+                            <div class="text-muted">ID: ${fund.id}</div>
+                        </td>
+                        <td><span class="sector-badge">${fund.sector || '未分类'}</span></td>
+                        <td>¥${fund.holdingAmount.toFixed(2)}</td>
+                        <td>${fund.netValue || '1.0000'}</td>
+                        <td class="${changeClass}">
+                            ${changeSymbol}${fund.dailyChange.toFixed(2)}%
+                        </td>
+                        <td>
+                            <span class="badge">${operationCount} 次</span>
+                        </td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="editFund('${fund.id}')">
+                                <i class="fas fa-edit"></i> 编辑
+                            </button>
+                            <button class="action-btn delete-btn" onclick="deleteFund('${fund.id}')">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        // 从存储获取基金数据
+        function getFundsFromStorage() {
+            try {
+                const data = localStorage.getItem('xiaoli_funds_data');
+                return data ? JSON.parse(data) : [];
+            } catch (error) {
+                console.error('读取数据失败:', error);
+                return [];
+            }
+        }
+        
+        // 保存基金数据到存储
+        function saveFundsToStorage(funds) {
+            try {
+                localStorage.setItem('xiaoli_funds_data', JSON.stringify(funds));
+                return true;
+            } catch (error) {
+                console.error('保存数据失败:', error);
+                return false;
+            }
+        }
+        
+        // 保存基金
+        function saveFund() {
+            const id = document.getElementById('editId').value;
+            const code = document.getElementById('fundCode').value.trim();
+            const name = document.getElementById('fundName').value.trim();
+            const sector = document.getElementById('sector').value;
+            const amount = parseFloat(document.getElementById('holdingAmount').value);
+            const netValue = document.getElementById('netValue').value ? 
+                           parseFloat(document.getElementById('netValue').value).toFixed(4) : 
+                           (1 + Math.random() * 2).toFixed(4);
+            const operationType = document.getElementById('operationType').value;
+            const operationAmount = document.getElementById('operationAmount').value ? 
+                                   parseFloat(document.getElementById('operationAmount').value) : 0;
+            const operationDate = document.getElementById('operationDate').value;
+            
+            // 验证
+            if (!code || !name || !sector || !amount || !operationType) {
+                showMessage('请填写所有必填项！', 'error');
+                return;
+            }
+            
+            // 获取现有数据
+            let funds = getFundsFromStorage();
+            
+            // 创建基金对象
+            const fundData = {
+                id: id || Date.now().toString(),
+                code: code,
+                name: name,
+                sector: sector,
+                holdingAmount: amount,
+                netValue: netValue,
+                dailyChange: (Math.random() * 4 - 2).toFixed(2), // -2% 到 +2%
+                operations: []
+            };
+            
+            // 如果是编辑，保留原有数据
+            if (id) {
+                const existingFund = funds.find(f => f.id === id);
+                if (existingFund) {
+                    fundData.operations = existingFund.operations || [];
+                    fundData.dailyChange = existingFund.dailyChange || 0;
+                }
+            }
+            
+            // 添加操作记录
+            fundData.operations.push({
+                type: operationType,
+                amount: operationAmount || amount,
+                date: operationDate || new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime()
+            });
+            
+            // 更新或添加基金
+            if (id) {
+                // 编辑
+                const index = funds.findIndex(f => f.id === id);
+                if (index !== -1) {
+                    funds[index] = fundData;
+                }
+            } else {
+                // 添加
+                funds.push(fundData);
+            }
+            
+            // 保存到存储
+            if (saveFundsToStorage(funds)) {
+                showMessage(id ? '基金更新成功！' : '基金添加成功！', 'success');
+                resetForm();
+                loadFundsTable();
+            } else {
+                showMessage('保存失败，请重试', 'error');
+            }
+        }
+        
+        // 编辑基金
+        function editFund(fundId) {
+            const funds = getFundsFromStorage();
+            const fund = funds.find(f => f.id === fundId);
+            if (!fund) {
+                showMessage('找不到基金数据', 'error');
+                return;
+            }
+            
+            // 填充表单
+            document.getElementById('editId').value = fund.id;
+            document.getElementById('fundCode').value = fund.code;
+            document.getElementById('fundName').value = fund.name;
+            document.getElementById('sector').value = fund.sector || '';
+            document.getElementById('holdingAmount').value = fund.holdingAmount;
+            document.getElementById('netValue').value = fund.netValue || '';
+            document.getElementById('operationType').value = 'add';
+            document.getElementById('operationAmount').value = '';
+            document.getElementById('operationDate').value = new Date().toISOString().split('T')[0];
+            
+            showMessage(`正在编辑: ${fund.name}`, 'warning');
+            
+            // 滚动到表单
+            document.getElementById('fundForm').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // 删除基金
+        function deleteFund(fundId) {
+            if (confirm('确定要删除这只基金吗？此操作不可撤销。')) {
+                let funds = getFundsFromStorage();
+                funds = funds.filter(fund => fund.id !== fundId);
+                
+                if (saveFundsToStorage(funds)) {
+                    showMessage('删除成功！', 'success');
+                    loadFundsTable();
+                } else {
+                    showMessage('删除失败', 'error');
+                }
+            }
+        }
+        
+        // 重置表单
+        function resetForm() {
+            document.getElementById('fundForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('operationDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('netValue').value = '';
+            showMessage('表单已重置', 'warning');
+        }
+        
+        // 导出数据
+        function exportData() {
+            const funds = getFundsFromStorage();
+            if (!funds || funds.length === 0) {
+                showMessage('没有数据可导出', 'warning');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(funds, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `小李基金数据_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showMessage('数据导出成功！', 'success');
+        }
+        
+        // 导入数据
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.endsWith('.json')) {
+                showMessage('请选择JSON格式的文件', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (Array.isArray(importedData)) {
+                        // 保存导入的数据
+                        if (saveFundsToStorage(importedData)) {
+                            showMessage('数据导入成功！', 'success');
+                            loadFundsTable();
+                        } else {
+                            showMessage('导入失败', 'error');
+                        }
+                    } else {
+                        showMessage('文件格式不正确', 'error');
+                    }
+                } catch (error) {
+                    showMessage('解析文件失败: ' + error.message, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+            
+            // 清空文件输入
+            e.target.value = '';
+        }
+        
+        // 确认清空所有数据
+        function confirmClearAll() {
+            if (confirm('⚠️ 警告：这将删除所有基金数据，操作不可撤销！\n\n确定要清空所有数据吗？')) {
+                if (confirm('再次确认：你真的要删除所有数据吗？')) {
+                    localStorage.removeItem('xiaoli_funds_data');
+                    showMessage('所有数据已清空', 'warning');
+                    loadFundsTable();
+                }
+            }
+        }
+        
+        // 显示消息
+        function showMessage(text, type) {
+            const messageArea = document.getElementById('messageArea');
+            
+            // 移除现有消息
+            messageArea.innerHTML = '';
+            
+            // 创建新消息
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let icon = 'info-circle';
+            if (type === 'success') icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+            if (type === 'warning') icon = 'exclamation-triangle';
+            
+            messageDiv.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                ${text}
+            `;
+            
+            messageArea.appendChild(messageDiv);
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.style.opacity = '0';
+                    messageDiv.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        if (messageDiv.parentNode) {
+                            messageDiv.parentNode.removeChild(messageDiv);
+                        }
+                    }, 300);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
